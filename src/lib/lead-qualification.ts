@@ -75,14 +75,14 @@ export function processOverpassResults(
 
   for (const el of elements) {
     const tags = el.tags ?? {};
-    const name = tags.name?.trim();
+    const name = tags["name"]?.trim();
     if (!name) continue;
 
     const lat = el.lat ?? el.center?.lat;
     const lon = el.lon ?? el.center?.lon;
     if (lat == null || lon == null) continue;
 
-    const categoryRaw = tags.amenity ?? "restaurant";
+    const categoryRaw = tags["amenity"] ?? "restaurant";
     const { signals, signalCount, level } = classifySignals(tags);
 
     results.push({

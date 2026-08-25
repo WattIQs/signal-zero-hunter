@@ -263,7 +263,11 @@ function Index() {
   };
 
   const sortedResults = useMemo(() => {
-    const order: Record<string, number> = { zero: 0, weak: 1, full: 2 };
+    const order: Record<"zero" | "weak" | "full", number> = {
+      zero: 0,
+      weak: 1,
+      full: 2,
+    };
     return [...results].sort((a, b) => order[a.level] - order[b.level]);
   }, [results]);
 

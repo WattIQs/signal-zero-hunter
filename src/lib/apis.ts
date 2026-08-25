@@ -181,9 +181,10 @@ export async function geocodeCity(
           "Cidade não encontrada. Tente simplificar o nome (sem bairro ou acentos)."
         );
       }
+      const first = results[0];
       return {
-        lat: Number.parseFloat(results[0].lat),
-        lon: Number.parseFloat(results[0].lon),
+        lat: Number.parseFloat(first.lat),
+        lon: Number.parseFloat(first.lon),
       };
     },
     { context: "geocodificação da cidade" }
