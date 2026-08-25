@@ -411,25 +411,48 @@ function Index() {
               <CategoryChips value={categories} onChange={setCategories} />
             </div>
 
-            {/* Filtro de qualificação */}
-            <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/60 p-3">
-              <div>
-                <Label
-                  htmlFor="only-low"
-                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  Só leads pouco avaliados / sem presença
-                </Label>
-                <p className="mt-1 text-xs text-muted-foreground/80">
-                  Esconde quem já tem presença digital forte (Sinal Pleno).
-                </p>
+            {/* Filtros de qualificação */}
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/60 p-3">
+                <div>
+                  <Label
+                    htmlFor="only-contactable"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Só quem eu consigo contatar
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground/80">
+                    Mostra apenas leads com WhatsApp/telefone ou Instagram para abordagem direta.
+                  </p>
+                </div>
+                <Switch
+                  id="only-contactable"
+                  checked={onlyContactable}
+                  onCheckedChange={setOnlyContactable}
+                />
               </div>
-              <Switch
-                id="only-low"
-                checked={onlyLowSignal}
-                onCheckedChange={setOnlyLowSignal}
-              />
+
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/60 p-3">
+                <div>
+                  <Label
+                    htmlFor="only-low"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Só quem tem presença fraca
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground/80">
+                    Esconde quem já está bem digitalizado (site + redes). Use "Ver avaliações" no
+                    card para conferir as estrelas no Google em segundos.
+                  </p>
+                </div>
+                <Switch
+                  id="only-low"
+                  checked={onlyLowSignal}
+                  onCheckedChange={setOnlyLowSignal}
+                />
+              </div>
             </div>
+
 
 
             {/* Scan button */}
