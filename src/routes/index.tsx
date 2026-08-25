@@ -517,9 +517,9 @@ function Index() {
             </Card>
             <Card className="border-cyan/30 bg-cyan/10">
               <CardContent className="p-3 text-center">
-                <p className="text-2xl font-bold text-cyan">{counts.full}</p>
+                <p className="text-2xl font-bold text-cyan">{counts.contactable}</p>
                 <p className="text-[10px] font-medium uppercase tracking-wider text-cyan/80">
-                  Sinal Pleno
+                  Contatáveis
                 </p>
               </CardContent>
             </Card>
@@ -534,9 +534,10 @@ function Index() {
                 Resultados ({sortedResults.length})
               </h2>
               <span className="text-xs text-muted-foreground">
-                Cidade inteira · do lead mais quente ao mais digitalizado
+                Cidade inteira · contatáveis primeiro
               </span>
             </div>
+
             {sortedResults.map((lead) => (
               <LeadCard
                 key={lead.id}
