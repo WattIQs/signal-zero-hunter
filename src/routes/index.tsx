@@ -499,10 +499,10 @@ function Index() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
-                Resultados ({results.length})
+                Resultados ({sortedResults.length})
               </h2>
               <span className="text-xs text-muted-foreground">
-                Ordenados do lead mais quente ao mais digitalizado
+                Cidade inteira · do lead mais quente ao mais digitalizado
               </span>
             </div>
             {sortedResults.map((lead) => (
