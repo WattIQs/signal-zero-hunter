@@ -282,11 +282,15 @@ function Index() {
       weak: 1,
       full: 2,
     };
-    const filtered = onlyLowSignal
-      ? results.filter((r) => r.level !== "full")
-      : results;
-    return [...filtered].sort((a, b) => order[a.level] - order[b.level]);
-  }, [results, onlyLowSignal]);
+    let filtered = results;
+    if (onlyLowSignal) filtered = filtered.filter((r) => r.level !== "full");
+    if (onlyContactable) filtered = filtered.filter((r) => r.contactable);
+    return [...filtered].sort((a, b) => {
+      if (a.contactable !== b.contactable) return a.contactable ? -1 : 1;
+      return order[a.level] - order[b.level];
+    });
+  }, [results, onlyLowSignal, onlyContactable]);
+
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground md:px-6 md:py-8">
