@@ -90,7 +90,7 @@ export const searchOverpassServer = createServerFn({ method: "POST" })
   node${filter}(${bbox});
   way${filter}(${bbox});
 );
-out tags center 400;`;
+out tags center 1200;`;
 
     const errors: string[] = [];
     for (const mirror of OVERPASS_MIRRORS) {
