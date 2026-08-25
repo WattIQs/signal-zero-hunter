@@ -147,6 +147,20 @@ export async function fetchCitiesByCountry(country: string): Promise<City[]> {
   );
 }
 
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 15000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function geocodeCity(
   country: string,
   state: string | null,
@@ -158,16 +172,12 @@ export async function geocodeCity(
 
   return fetchWithRetry(
     async () => {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           query
         )}&limit=1`,
-        {
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "SinalZero/1.0",
-          },
-        }
+        { headers: { Accept: "application/json" } },
+        12000
       );
       if (!response.ok) {
         throw new Error(`Nominatim respondeu ${response.status}`);
@@ -175,6 +185,7 @@ export async function geocodeCity(
       const results = (await response.json()) as {
         lat: string;
         lon: string;
+        boundingbox?: [string, string, string, string];
       }[];
       const first = results?.[0];
       if (!first) {
@@ -182,12 +193,21 @@ export async function geocodeCity(
           "Cidade não encontrada. Tente simplificar o nome (sem bairro ou acentos)."
         );
       }
+      const bb = first.boundingbox;
       return {
         lat: Number.parseFloat(first.lat),
         lon: Number.parseFloat(first.lon),
+        boundingBox: bb
+          ? {
+              south: Number.parseFloat(bb[0]),
+              north: Number.parseFloat(bb[1]),
+              west: Number.parseFloat(bb[2]),
+              east: Number.parseFloat(bb[3]),
+            }
+          : null,
       };
     },
-    { context: "geocodificação da cidade" }
+    { retries: 2, context: "geocodificação da cidade" }
   );
 }
 
@@ -198,28 +218,25 @@ const OVERPASS_MIRRORS = [
 ];
 
 function buildOverpassQuery(
-  lat: number,
-  lon: number,
-  radius: number,
+  area: { south: number; north: number; west: number; east: number },
   categories: CategoryKey[]
 ): string {
   const amenities = categories.map((c) => CATEGORY_AMENITY[c]);
-  const amenityFilter = amenities.map((a) => `node["amenity"="${a}"];`).join("\n    ");
+  const bbox = `${area.south},${area.west},${area.north},${area.east}`;
+  const filter = `["amenity"~"^(${amenities.join("|")})$"]`;
   return `
-[out:json][timeout:25];
+[out:json][timeout:60];
 (
-  node["amenity"~"^(${amenities.join("|")})$"](around:${radius},${lat},${lon});
-  way["amenity"~"^(${amenities.join("|")})$"](around:${radius},${lat},${lon});
-  relation["amenity"~"^(${amenities.join("|")})$"](around:${radius},${lat},${lon});
+  node${filter}(${bbox});
+  way${filter}(${bbox});
+  relation${filter}(${bbox});
 );
-out center tags 100;
+out center tags 400;
 `;
 }
 
 export async function searchOverpass(
-  lat: number,
-  lon: number,
-  radius: number,
+  area: { south: number; north: number; west: number; east: number },
   categories: CategoryKey[]
 ): Promise<{
   elements: {
@@ -231,17 +248,21 @@ export async function searchOverpass(
     tags?: Record<string, string>;
   }[];
 }> {
-  const query = buildOverpassQuery(lat, lon, radius, categories);
+  const query = buildOverpassQuery(area, categories);
 
   for (const mirror of OVERPASS_MIRRORS) {
     try {
       return await fetchWithRetry(
         async () => {
-          const response = await fetch(mirror, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `data=${encodeURIComponent(query)}`,
-          });
+          const response = await fetchWithTimeout(
+            mirror,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: `data=${encodeURIComponent(query)}`,
+            },
+            60000
+          );
           if (!response.ok) {
             throw new Error(`Overpass respondeu ${response.status}`);
           }
@@ -257,7 +278,7 @@ export async function searchOverpass(
           };
           return data;
         },
-        { context: `Overpass ${mirror}` }
+        { retries: 2, context: `Overpass ${mirror}` }
       );
     } catch (error) {
       console.warn(`Mirror falhou: ${mirror}`, error);
@@ -268,3 +289,4 @@ export async function searchOverpass(
     "Nenhum espelho do Overpass respondeu. Tente novamente em alguns segundos."
   );
 }
+

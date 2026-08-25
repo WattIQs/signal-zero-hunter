@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -90,7 +90,7 @@ function Index() {
   const [selectedCity, setSelectedCity] = useState<string>("");
 
   const [categories, setCategories] = useState<CategoryKey[]>(DEFAULT_CATEGORIES);
-  const [radius, setRadius] = useState<number>(2000);
+  const [onlyLowSignal, setOnlyLowSignal] = useState(true);
 
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingStates, setLoadingStates] = useState(false);
@@ -237,12 +237,21 @@ function Index() {
         selectedState || null,
         selectedCity
       );
-      const data = await searchOverpass(geo.lat, geo.lon, radius, categories);
+      // Área da cidade inteira: usa o bounding box do Nominatim.
+      const delta = 0.09; // ~10 km, fallback quando não há bounding box
+      const area =
+        geo.boundingBox ?? {
+          south: geo.lat - delta,
+          north: geo.lat + delta,
+          west: geo.lon - delta,
+          east: geo.lon + delta,
+        };
+      const data = await searchOverpass(area, categories);
       const processed = processOverpassResults(data.elements, categories);
       setResults(processed);
       if (processed.length === 0) {
         setError(
-          "Nenhum estabelecimento encontrado nesta área. Tente aumentar o raio ou mudar a categoria."
+          "Nenhum estabelecimento encontrado nesta cidade. Tente outra categoria ou outra cidade."
         );
       }
     } catch (err) {
@@ -268,8 +277,11 @@ function Index() {
       weak: 1,
       full: 2,
     };
-    return [...results].sort((a, b) => order[a.level] - order[b.level]);
-  }, [results]);
+    const filtered = onlyLowSignal
+      ? results.filter((r) => r.level !== "full")
+      : results;
+    return [...filtered].sort((a, b) => order[a.level] - order[b.level]);
+  }, [results, onlyLowSignal]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground md:px-6 md:py-8">
@@ -390,25 +402,26 @@ function Index() {
               <CategoryChips value={categories} onChange={setCategories} />
             </div>
 
-            {/* Radius */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Raio de busca
+            {/* Filtro de qualificação */}
+            <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/60 p-3">
+              <div>
+                <Label
+                  htmlFor="only-low"
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                >
+                  Só leads pouco avaliados / sem presença
                 </Label>
-                <span className="font-mono text-sm text-signal-zero">
-                  {(radius / 1000).toFixed(1)} km
-                </span>
+                <p className="mt-1 text-xs text-muted-foreground/80">
+                  Esconde quem já tem presença digital forte (Sinal Pleno).
+                </p>
               </div>
-              <Slider
-                value={[radius]}
-                onValueChange={(v) => setRadius(v[0] ?? 500)}
-                min={500}
-                max={8000}
-                step={500}
-                className="py-2"
+              <Switch
+                id="only-low"
+                checked={onlyLowSignal}
+                onCheckedChange={setOnlyLowSignal}
               />
             </div>
+
 
             {/* Scan button */}
             <Button
@@ -486,10 +499,10 @@ function Index() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
-                Resultados ({results.length})
+                Resultados ({sortedResults.length})
               </h2>
               <span className="text-xs text-muted-foreground">
-                Ordenados do lead mais quente ao mais digitalizado
+                Cidade inteira · do lead mais quente ao mais digitalizado
               </span>
             </div>
             {sortedResults.map((lead) => (
