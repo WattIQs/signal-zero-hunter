@@ -12,9 +12,17 @@ export interface City {
   name: string;
 }
 
+export interface BoundingBox {
+  south: number;
+  north: number;
+  west: number;
+  east: number;
+}
+
 export interface GeoPoint {
   lat: number;
   lon: number;
+  boundingBox?: BoundingBox | null;
 }
 
 export interface EstablishmentSignals {
