@@ -21,10 +21,10 @@ import {
   fetchStates,
   fetchCitiesByState,
   fetchCitiesByCountry,
-  geocodeCity,
-  searchOverpass,
 } from "@/lib/apis";
+import { geocodeCityServer, searchOverpassServer } from "@/lib/geo.functions";
 import { processOverpassResults } from "@/lib/lead-qualification";
+
 import {
   getSavedLeads,
   saveLead,
