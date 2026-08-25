@@ -277,8 +277,11 @@ function Index() {
       weak: 1,
       full: 2,
     };
-    return [...results].sort((a, b) => order[a.level] - order[b.level]);
-  }, [results]);
+    const filtered = onlyLowSignal
+      ? results.filter((r) => r.level !== "full")
+      : results;
+    return [...filtered].sort((a, b) => order[a.level] - order[b.level]);
+  }, [results, onlyLowSignal]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground md:px-6 md:py-8">
@@ -399,25 +402,26 @@ function Index() {
               <CategoryChips value={categories} onChange={setCategories} />
             </div>
 
-            {/* Radius */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Raio de busca
+            {/* Filtro de qualificação */}
+            <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/60 p-3">
+              <div>
+                <Label
+                  htmlFor="only-low"
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                >
+                  Só leads pouco avaliados / sem presença
                 </Label>
-                <span className="font-mono text-sm text-signal-zero">
-                  {(radius / 1000).toFixed(1)} km
-                </span>
+                <p className="mt-1 text-xs text-muted-foreground/80">
+                  Esconde quem já tem presença digital forte (Sinal Pleno).
+                </p>
               </div>
-              <Slider
-                value={[radius]}
-                onValueChange={(v) => setRadius(v[0] ?? 500)}
-                min={500}
-                max={8000}
-                step={500}
-                className="py-2"
+              <Switch
+                id="only-low"
+                checked={onlyLowSignal}
+                onCheckedChange={setOnlyLowSignal}
               />
             </div>
+
 
             {/* Scan button */}
             <Button
