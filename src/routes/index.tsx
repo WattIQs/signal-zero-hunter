@@ -21,10 +21,10 @@ import {
   fetchStates,
   fetchCitiesByState,
   fetchCitiesByCountry,
-  geocodeCity,
-  searchOverpass,
 } from "@/lib/apis";
+import { geocodeCityServer, searchOverpassServer } from "@/lib/geo.functions";
 import { processOverpassResults } from "@/lib/lead-qualification";
+
 import {
   getSavedLeads,
   saveLead,
@@ -232,11 +232,13 @@ function Index() {
     setResults([]);
 
     try {
-      const geo = await geocodeCity(
-        selectedCountry,
-        selectedState || null,
-        selectedCity
-      );
+      const geo = await geocodeCityServer({
+        data: {
+          country: selectedCountry,
+          state: selectedState || null,
+          city: selectedCity,
+        },
+      });
       // Área da cidade inteira: usa o bounding box do Nominatim.
       const delta = 0.09; // ~10 km, fallback quando não há bounding box
       const area =
@@ -246,7 +248,7 @@ function Index() {
           west: geo.lon - delta,
           east: geo.lon + delta,
         };
-      const data = await searchOverpass(area, categories);
+      const data = await searchOverpassServer({ data: { area, categories } });
       const processed = processOverpassResults(data.elements, categories);
       setResults(processed);
       if (processed.length === 0) {
