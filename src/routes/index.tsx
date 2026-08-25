@@ -215,9 +215,10 @@ function Index() {
     return {
       zero: results.filter((r) => r.level === "zero").length,
       weak: results.filter((r) => r.level === "weak").length,
-      full: results.filter((r) => r.level === "full").length,
+      contactable: results.filter((r) => r.contactable).length,
     };
   }, [results]);
+
 
   const handleScan = async () => {
     if (!selectedCountry || !selectedCity) {
