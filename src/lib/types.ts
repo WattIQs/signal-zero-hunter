@@ -33,8 +33,43 @@ export interface EstablishmentSignals {
   phone: boolean;
 }
 
+export interface EstablishmentContact {
+  phoneRaw: string | null;
+  phoneDigits: string | null;
+  whatsappUrl: string | null;
+  instagramHandle: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  websiteUrl: string | null;
+  email: string | null;
+}
+
+export interface EstablishmentDetails {
+  cuisine: string | null;
+  openingHours: string | null;
+  priceRange: string | null;
+  street: string | null;
+  housenumber: string | null;
+  neighbourhood: string | null;
+  city: string | null;
+  state: string | null;
+  postcode: string | null;
+  takeaway: string | null;
+  delivery: string | null;
+  outdoorSeating: string | null;
+  wheelchair: string | null;
+  smoking: string | null;
+  vegetarian: string | null;
+  airConditioning: string | null;
+  capacity: string | null;
+  brand: string | null;
+  operator: string | null;
+}
+
 export interface Establishment {
   id: string;
+  osmType: string;
+  osmId: number;
   name: string;
   category: string;
   address: string;
@@ -42,8 +77,14 @@ export interface Establishment {
   lon: number;
   tags: Record<string, string>;
   signals: EstablishmentSignals;
+  contact: EstablishmentContact;
+  details: EstablishmentDetails;
+  contactable: boolean;
   signalCount: number;
   level: SignalLevel;
+  googleMapsUrl: string;
+  osmUrl: string;
+  directionsUrl: string;
 }
 
 export interface SavedLead extends Establishment {

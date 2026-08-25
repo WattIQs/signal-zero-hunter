@@ -91,6 +91,8 @@ function Index() {
 
   const [categories, setCategories] = useState<CategoryKey[]>(DEFAULT_CATEGORIES);
   const [onlyLowSignal, setOnlyLowSignal] = useState(true);
+  const [onlyContactable, setOnlyContactable] = useState(true);
+
 
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingStates, setLoadingStates] = useState(false);
@@ -213,9 +215,10 @@ function Index() {
     return {
       zero: results.filter((r) => r.level === "zero").length,
       weak: results.filter((r) => r.level === "weak").length,
-      full: results.filter((r) => r.level === "full").length,
+      contactable: results.filter((r) => r.contactable).length,
     };
   }, [results]);
+
 
   const handleScan = async () => {
     if (!selectedCountry || !selectedCity) {
@@ -279,11 +282,15 @@ function Index() {
       weak: 1,
       full: 2,
     };
-    const filtered = onlyLowSignal
-      ? results.filter((r) => r.level !== "full")
-      : results;
-    return [...filtered].sort((a, b) => order[a.level] - order[b.level]);
-  }, [results, onlyLowSignal]);
+    let filtered = results;
+    if (onlyLowSignal) filtered = filtered.filter((r) => r.level !== "full");
+    if (onlyContactable) filtered = filtered.filter((r) => r.contactable);
+    return [...filtered].sort((a, b) => {
+      if (a.contactable !== b.contactable) return a.contactable ? -1 : 1;
+      return order[a.level] - order[b.level];
+    });
+  }, [results, onlyLowSignal, onlyContactable]);
+
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground md:px-6 md:py-8">
@@ -404,25 +411,48 @@ function Index() {
               <CategoryChips value={categories} onChange={setCategories} />
             </div>
 
-            {/* Filtro de qualificação */}
-            <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/60 p-3">
-              <div>
-                <Label
-                  htmlFor="only-low"
-                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  Só leads pouco avaliados / sem presença
-                </Label>
-                <p className="mt-1 text-xs text-muted-foreground/80">
-                  Esconde quem já tem presença digital forte (Sinal Pleno).
-                </p>
+            {/* Filtros de qualificação */}
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/60 p-3">
+                <div>
+                  <Label
+                    htmlFor="only-contactable"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Só quem eu consigo contatar
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground/80">
+                    Mostra apenas leads com WhatsApp/telefone ou Instagram para abordagem direta.
+                  </p>
+                </div>
+                <Switch
+                  id="only-contactable"
+                  checked={onlyContactable}
+                  onCheckedChange={setOnlyContactable}
+                />
               </div>
-              <Switch
-                id="only-low"
-                checked={onlyLowSignal}
-                onCheckedChange={setOnlyLowSignal}
-              />
+
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/60 p-3">
+                <div>
+                  <Label
+                    htmlFor="only-low"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Só quem tem presença fraca
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground/80">
+                    Esconde quem já está bem digitalizado (site + redes). Use "Ver avaliações" no
+                    card para conferir as estrelas no Google em segundos.
+                  </p>
+                </div>
+                <Switch
+                  id="only-low"
+                  checked={onlyLowSignal}
+                  onCheckedChange={setOnlyLowSignal}
+                />
+              </div>
             </div>
+
 
 
             {/* Scan button */}
@@ -487,9 +517,9 @@ function Index() {
             </Card>
             <Card className="border-cyan/30 bg-cyan/10">
               <CardContent className="p-3 text-center">
-                <p className="text-2xl font-bold text-cyan">{counts.full}</p>
+                <p className="text-2xl font-bold text-cyan">{counts.contactable}</p>
                 <p className="text-[10px] font-medium uppercase tracking-wider text-cyan/80">
-                  Sinal Pleno
+                  Contatáveis
                 </p>
               </CardContent>
             </Card>
@@ -504,19 +534,29 @@ function Index() {
                 Resultados ({sortedResults.length})
               </h2>
               <span className="text-xs text-muted-foreground">
-                Cidade inteira · do lead mais quente ao mais digitalizado
+                Cidade inteira · contatáveis primeiro
               </span>
             </div>
-            {sortedResults.map((lead) => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                saved={isLeadSaved(lead.id)}
-                onToggleSave={handleToggleSave}
-              />
-            ))}
+
+            {sortedResults.length === 0 ? (
+              <p className="rounded-lg border border-border bg-background/60 p-4 text-sm text-muted-foreground">
+                {results.length} estabelecimentos encontrados, mas nenhum passou nos filtros.
+                Desligue "Só quem eu consigo contatar" para ver também quem só tem endereço no
+                OpenStreetMap.
+              </p>
+            ) : (
+              sortedResults.map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  saved={isLeadSaved(lead.id)}
+                  onToggleSave={handleToggleSave}
+                />
+              ))
+            )}
           </div>
         )}
+
 
         {/* Empty state */}
         {!scanning && results.length === 0 && !error && (
