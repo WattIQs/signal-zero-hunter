@@ -91,6 +91,8 @@ function Index() {
 
   const [categories, setCategories] = useState<CategoryKey[]>(DEFAULT_CATEGORIES);
   const [onlyLowSignal, setOnlyLowSignal] = useState(true);
+  const [onlyContactable, setOnlyContactable] = useState(true);
+
 
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingStates, setLoadingStates] = useState(false);
