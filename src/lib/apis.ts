@@ -176,12 +176,12 @@ export async function geocodeCity(
         lat: string;
         lon: string;
       }[];
-      if (!results || results.length === 0) {
+      const first = results?.[0];
+      if (!first) {
         throw new Error(
           "Cidade não encontrada. Tente simplificar o nome (sem bairro ou acentos)."
         );
       }
-      const first = results[0];
       return {
         lat: Number.parseFloat(first.lat),
         lon: Number.parseFloat(first.lon),
