@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -90,7 +90,7 @@ function Index() {
   const [selectedCity, setSelectedCity] = useState<string>("");
 
   const [categories, setCategories] = useState<CategoryKey[]>(DEFAULT_CATEGORIES);
-  const [radius, setRadius] = useState<number>(2000);
+  const [onlyLowSignal, setOnlyLowSignal] = useState(true);
 
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingStates, setLoadingStates] = useState(false);
