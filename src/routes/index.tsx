@@ -237,12 +237,21 @@ function Index() {
         selectedState || null,
         selectedCity
       );
-      const data = await searchOverpass(geo.lat, geo.lon, radius, categories);
+      // Área da cidade inteira: usa o bounding box do Nominatim.
+      const delta = 0.09; // ~10 km, fallback quando não há bounding box
+      const area =
+        geo.boundingBox ?? {
+          south: geo.lat - delta,
+          north: geo.lat + delta,
+          west: geo.lon - delta,
+          east: geo.lon + delta,
+        };
+      const data = await searchOverpass(area, categories);
       const processed = processOverpassResults(data.elements, categories);
       setResults(processed);
       if (processed.length === 0) {
         setError(
-          "Nenhum estabelecimento encontrado nesta área. Tente aumentar o raio ou mudar a categoria."
+          "Nenhum estabelecimento encontrado nesta cidade. Tente outra categoria ou outra cidade."
         );
       }
     } catch (err) {
