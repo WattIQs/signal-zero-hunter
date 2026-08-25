@@ -538,16 +538,25 @@ function Index() {
               </span>
             </div>
 
-            {sortedResults.map((lead) => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                saved={isLeadSaved(lead.id)}
-                onToggleSave={handleToggleSave}
-              />
-            ))}
+            {sortedResults.length === 0 ? (
+              <p className="rounded-lg border border-border bg-background/60 p-4 text-sm text-muted-foreground">
+                {results.length} estabelecimentos encontrados, mas nenhum passou nos filtros.
+                Desligue "Só quem eu consigo contatar" para ver também quem só tem endereço no
+                OpenStreetMap.
+              </p>
+            ) : (
+              sortedResults.map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  saved={isLeadSaved(lead.id)}
+                  onToggleSave={handleToggleSave}
+                />
+              ))
+            )}
           </div>
         )}
+
 
         {/* Empty state */}
         {!scanning && results.length === 0 && !error && (
