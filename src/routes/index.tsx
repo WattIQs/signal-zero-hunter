@@ -5,16 +5,39 @@ import { MapPin, Radar, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { fetchCountries, fetchStates, fetchCitiesByState, fetchCitiesByCountry } from "@/lib/apis";
+import {
+  fetchCountries,
+  fetchStates,
+  fetchCitiesByState,
+  fetchCitiesByCountry,
+} from "@/lib/apis";
 import { geocodeCityServer, searchOverpassServer } from "@/lib/geo.functions";
 import { processOverpassResults } from "@/lib/lead-qualification";
-import { getSavedLeads, saveLead, removeLead, isLeadSaved } from "@/lib/store";
-import type { CategoryKey, City, Country, Establishment, SavedLead, State } from "@/lib/types";
+import {
+  getSavedLeads,
+  saveLead,
+  removeLead,
+  isLeadSaved,
+} from "@/lib/store";
+import type {
+  CategoryKey,
+  City,
+  Country,
+  Establishment,
+  SavedLead,
+  State,
+} from "@/lib/types";
 import { CategoryChips } from "@/components/sinal-zero/CategoryChips";
 import { ExportCsvButton } from "@/components/sinal-zero/ExportCsvButton";
 import { LeadCard } from "@/components/sinal-zero/LeadCard";
@@ -46,26 +69,28 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const DEFAULT_CATEGORIES: CategoryKey[] = ["restaurant", "fast_food", "cafe", "bar", "pub"];
+const DEFAULT_CATEGORIES: CategoryKey[] = [
+  "restaurant",
+  "fast_food",
+  "cafe",
+  "bar",
+  "pub",
+];
 
 function Index() {
   const [countries, setCountries] = useState<Country[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
-
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedState, setSelectedState] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState<string>("");
-
   const [categories, setCategories] = useState<CategoryKey[]>(DEFAULT_CATEGORIES);
   const [onlyLowSignal, setOnlyLowSignal] = useState(true);
   const [onlyContactable, setOnlyContactable] = useState(true);
-
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
   const [scanning, setScanning] = useState(false);
-
   const [results, setResults] = useState<Establishment[]>([]);
   const [savedLeads, setSavedLeads] = useState<SavedLead[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +110,6 @@ function Index() {
       });
 
     setSavedLeads(getSavedLeads());
-
     return () => {
       cancelled = true;
     };
@@ -213,7 +237,11 @@ function Index() {
           east: geo.lon + delta,
         };
       const data = await searchOverpassServer({
-        data: { area, areaId: geo.areaId, categories },
+        data: {
+          area,
+          ...(geo.areaId != null ? { areaId: geo.areaId } : {}),
+          categories,
+        },
       });
       const processed = processOverpassResults(data.elements);
       setResults(processed);
@@ -292,7 +320,6 @@ function Index() {
                 </Select>
                 {loadingCountries && <Skeleton className="h-4 w-24" />}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="state" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Estado</Label>
                 <Select value={selectedState} onValueChange={setSelectedState} disabled={!selectedCountry || loadingStates || states.length === 0}>
@@ -301,7 +328,6 @@ function Index() {
                 </Select>
                 {loadingStates && <Skeleton className="h-4 w-24" />}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="city" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Cidade</Label>
                 <Select value={selectedCity} onValueChange={setSelectedCity} disabled={!selectedCountry || loadingCities || cities.length === 0}>
@@ -334,7 +360,12 @@ function Index() {
               </div>
             </div>
 
-            <Button onClick={handleScan} disabled={scanning || !selectedCountry || !selectedCity} className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90" size="lg">
+            <Button
+              onClick={handleScan}
+              disabled={scanning || !selectedCountry || !selectedCity}
+              className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              size="lg"
+            >
               {scanning ? <><ScanLine className="h-4 w-4 animate-pulse" />Escaneando área...</> : <><Radar className="h-4 w-4" />Escanear área</>}
             </Button>
           </CardContent>
@@ -374,7 +405,9 @@ function Index() {
                 {results.length} estabelecimentos encontrados, mas nenhum passou nos filtros. Desligue "Só quem eu consigo contatar" para ver também quem só tem endereço no OpenStreetMap.
               </p>
             ) : (
-              sortedResults.map((lead) => <LeadCard key={lead.id} lead={lead} saved={isLeadSaved(lead.id)} onToggleSave={handleToggleSave} />)
+              sortedResults.map((lead) => (
+                <LeadCard key={lead.id} lead={lead} saved={isLeadSaved(lead.id)} onToggleSave={handleToggleSave} />
+              ))
             )}
           </div>
         )}
