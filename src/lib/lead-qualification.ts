@@ -1,10 +1,10 @@
 import type {
-  CategoryKey,
   Establishment,
   EstablishmentContact,
   EstablishmentDetails,
   SignalLevel,
 } from "./types";
+import { CATEGORIES, labelFromTags } from "./categories";
 
 function getTag(tags: Record<string, string>, keys: string[]): string | null {
   for (const key of keys) {
@@ -17,23 +17,32 @@ function getTag(tags: Record<string, string>, keys: string[]): string | null {
 }
 
 export function classifySignals(tags: Record<string, string>) {
-  const website = getTag(tags, ["website", "contact:website"]) !== null;
-  const instagram =
-    getTag(tags, ["contact:instagram", "instagram"]) !== null;
+  const website = getTag(tags, ["website", "contact:website", "url"]) !== null;
+  const instagram = getTag(tags, ["contact:instagram", "instagram"]) !== null;
   const facebook = getTag(tags, ["contact:facebook", "facebook"]) !== null;
   const email = getTag(tags, ["email", "contact:email"]) !== null;
   const phone =
-    getTag(tags, ["phone", "contact:phone", "contact:mobile", "mobile", "contact:whatsapp"]) !==
-    null;
+    getTag(tags, [
+      "phone",
+      "contact:phone",
+      "contact:mobile",
+      "mobile",
+      "contact:whatsapp",
+    ]) !== null;
 
-  const signalCount = [website, instagram, facebook, email].filter(Boolean).length;
+  const signalCount = [website, instagram, facebook, email].filter(Boolean)
+    .length;
 
   let level: SignalLevel;
   if (signalCount === 0) level = "zero";
   else if (signalCount === 1) level = "weak";
   else level = "full";
 
-  return { signals: { website, instagram, facebook, email, phone }, signalCount, level };
+  return {
+    signals: { website, instagram, facebook, email, phone },
+    signalCount,
+    level,
+  };
 }
 
 function normalizeUrl(value: string | null): string | null {
@@ -49,7 +58,8 @@ function instagramFromValue(value: string | null): {
   if (!value) return { handle: null, url: null };
   const cleaned = value.trim();
   const match = cleaned.match(/instagram\.com\/([A-Za-z0-9_.]+)/i);
-  const handle = match?.[1] ?? cleaned.replace(/^@/, "").split(/[/?\s]/)[0] ?? null;
+  const handle =
+    match?.[1] ?? cleaned.replace(/^@/, "").split(/[/?\s]/)[0] ?? null;
   if (!handle) return { handle: null, url: null };
   return { handle: `@${handle}`, url: `https://instagram.com/${handle}` };
 }
@@ -80,7 +90,7 @@ function buildContact(tags: Record<string, string>): EstablishmentContact {
     instagramHandle: ig.handle,
     instagramUrl: ig.url,
     facebookUrl: normalizeUrl(getTag(tags, ["contact:facebook", "facebook"])),
-    websiteUrl: normalizeUrl(getTag(tags, ["website", "contact:website"])),
+    websiteUrl: normalizeUrl(getTag(tags, ["website", "contact:website", "url"])),
     email: getTag(tags, ["email", "contact:email"]),
   };
 }
@@ -113,6 +123,14 @@ function formatCuisine(value: string | null): string | null {
     .join(", ");
 }
 
+function paymentSummary(tags: Record<string, string>): string | null {
+  const accepted = Object.entries(tags)
+    .filter(([key, value]) => key.startsWith("payment:") && value === "yes")
+    .map(([key]) => key.replace("payment:", "").replace(/_/g, " "));
+  if (accepted.length === 0) return null;
+  return accepted.slice(0, 5).join(", ");
+}
+
 function buildDetails(tags: Record<string, string>): EstablishmentDetails {
   return {
     cuisine: formatCuisine(getTag(tags, ["cuisine"])),
@@ -134,6 +152,8 @@ function buildDetails(tags: Record<string, string>): EstablishmentDetails {
     capacity: getTag(tags, ["capacity", "capacity:seats"]),
     brand: getTag(tags, ["brand"]),
     operator: getTag(tags, ["operator"]),
+    payment: paymentSummary(tags),
+    internetAccess: getTag(tags, ["internet_access"]),
   };
 }
 
@@ -141,9 +161,7 @@ function buildAddress(tags: Record<string, string>): string {
   const parts: string[] = [];
   const street = tags["addr:street"];
   const housenumber = tags["addr:housenumber"];
-  if (street) {
-    parts.push(housenumber ? `${street}, ${housenumber}` : street);
-  }
+  if (street) parts.push(housenumber ? `${street}, ${housenumber}` : street);
   const suburb = tags["addr:suburb"] ?? tags["addr:neighbourhood"];
   if (suburb) parts.push(suburb);
   const city = tags["addr:city"];
@@ -152,19 +170,36 @@ function buildAddress(tags: Record<string, string>): string {
   if (state) parts.push(state);
   const postcode = tags["addr:postcode"];
   if (postcode) parts.push(postcode);
-
   return parts.join(" — ") || "";
 }
 
-function normalizeCategory(raw: string): string {
-  const map: Record<string, string> = {
-    restaurant: "Restaurante",
-    fast_food: "Lanchonete",
-    cafe: "Café",
-    bar: "Bar",
-    pub: "Pub",
-  };
-  return map[raw] || raw;
+function groupFromTags(tags: Record<string, string>): string {
+  for (const def of CATEGORIES) {
+    const raw = tags[def.osmKey];
+    if (raw && def.osmValue.split(";")[0] === raw) return def.group;
+  }
+  return "Outros";
+}
+
+/** Pontuação 0-100: quanto mais fácil de contatar e menos digitalizado, maior. */
+function scoreLead(input: {
+  level: SignalLevel;
+  hasWhatsapp: boolean;
+  hasInstagram: boolean;
+  hasPhone: boolean;
+  hasAddress: boolean;
+  hasHours: boolean;
+}): number {
+  let score = 0;
+  if (input.level === "zero") score += 45;
+  else if (input.level === "weak") score += 28;
+  else score += 6;
+  if (input.hasWhatsapp) score += 30;
+  else if (input.hasPhone) score += 18;
+  if (input.hasInstagram) score += 12;
+  if (input.hasAddress) score += 8;
+  if (input.hasHours) score += 5;
+  return Math.min(100, score);
 }
 
 export function processOverpassResults(
@@ -175,10 +210,10 @@ export function processOverpassResults(
     lon?: number;
     center?: { lat: number; lon: number };
     tags?: Record<string, string>;
-  }[],
-  _categories: CategoryKey[]
+  }[]
 ): Establishment[] {
   const results: Establishment[] = [];
+  const seen = new Set<string>();
 
   for (const el of elements) {
     const tags = el.tags ?? {};
@@ -189,30 +224,50 @@ export function processOverpassResults(
     const lon = el.lon ?? el.center?.lon;
     if (lat == null || lon == null) continue;
 
-    const categoryRaw = tags["amenity"] ?? "restaurant";
+    const dedupeKey = `${name.toLowerCase()}|${lat.toFixed(4)}|${lon.toFixed(4)}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
     const { signals, signalCount, level } = classifySignals(tags);
     const contact = buildContact(tags);
     const details = buildDetails(tags);
     const address = buildAddress(tags);
+    const hasWhatsapp = Boolean(contact.whatsappUrl);
+    const hasInstagram = Boolean(contact.instagramUrl);
 
     results.push({
       id: `${el.type}-${el.id}`,
       osmType: el.type,
       osmId: el.id,
       name,
-      category: normalizeCategory(categoryRaw),
+      category: labelFromTags(tags),
+      categoryGroup: groupFromTags(tags),
       address,
+      hasAddress: address.length > 0,
       lat,
       lon,
       tags,
       signals,
       contact,
       details,
-      contactable: Boolean(contact.whatsappUrl || contact.instagramUrl),
+      contactable: hasWhatsapp || hasInstagram || Boolean(contact.phoneRaw),
+      hasWhatsapp,
+      hasInstagram,
       signalCount,
+      score: scoreLead({
+        level,
+        hasWhatsapp,
+        hasInstagram,
+        hasPhone: Boolean(contact.phoneRaw),
+        hasAddress: address.length > 0,
+        hasHours: Boolean(details.openingHours),
+      }),
       level,
       googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         `${name} ${address || `${lat},${lon}`}`
+      )}`,
+      googleSearchUrl: `https://www.google.com/search?q=${encodeURIComponent(
+        `${name} ${details.city ?? ""} avaliações`
       )}`,
       osmUrl: `https://www.openstreetmap.org/${el.type}/${el.id}`,
       directionsUrl: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`,
