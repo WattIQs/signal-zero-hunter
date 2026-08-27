@@ -9,9 +9,7 @@ import { CATEGORIES, labelFromTags } from "./categories";
 function getTag(tags: Record<string, string>, keys: string[]): string | null {
   for (const key of keys) {
     const value = tags[key];
-    if (value && value.trim().length > 0) {
-      return value.trim();
-    }
+    if (value && value.trim().length > 0) return value.trim();
   }
   return null;
 }
@@ -21,22 +19,17 @@ export function classifySignals(tags: Record<string, string>) {
   const instagram = getTag(tags, ["contact:instagram", "instagram"]) !== null;
   const facebook = getTag(tags, ["contact:facebook", "facebook"]) !== null;
   const email = getTag(tags, ["email", "contact:email"]) !== null;
-  const phone =
-    getTag(tags, [
-      "phone",
-      "contact:phone",
-      "contact:mobile",
-      "mobile",
-      "contact:whatsapp",
-    ]) !== null;
+  const phone = getTag(tags, [
+    "phone",
+    "contact:phone",
+    "contact:mobile",
+    "mobile",
+    "contact:whatsapp",
+    "whatsapp",
+  ]) !== null;
 
-  const signalCount = [website, instagram, facebook, email].filter(Boolean)
-    .length;
-
-  let level: SignalLevel;
-  if (signalCount === 0) level = "zero";
-  else if (signalCount === 1) level = "weak";
-  else level = "full";
+  const signalCount = [website, instagram, facebook, email].filter(Boolean).length;
+  const level: SignalLevel = signalCount === 0 ? "zero" : signalCount === 1 ? "weak" : "full";
 
   return {
     signals: { website, instagram, facebook, email, phone },
@@ -51,42 +44,44 @@ function normalizeUrl(value: string | null): string | null {
   return `https://${value.replace(/^\/+/, "")}`;
 }
 
-function instagramFromValue(value: string | null): {
-  handle: string | null;
-  url: string | null;
-} {
+function instagramFromValue(value: string | null): { handle: string | null; url: string | null } {
   if (!value) return { handle: null, url: null };
   const cleaned = value.trim();
-  const match = cleaned.match(/instagram\.com\/([A-Za-z0-9_.]+)/i);
-  const handle =
-    match?.[1] ?? cleaned.replace(/^@/, "").split(/[/?\s]/)[0] ?? null;
+  const match = cleaned.match(/(?:instagram\.com\/|^@)([A-Za-z0-9_.]+)/i);
+  const handle = match?.[1] ?? cleaned.split(/[/?\s]/)[0];
   if (!handle) return { handle: null, url: null };
-  return { handle: `@${handle}`, url: `https://instagram.com/${handle}` };
+  return { handle: `@${handle.replace(/^@/, "")}`, url: `https://instagram.com/${handle.replace(/^@/, "")}` };
+}
+
+function normalizePhoneDigits(value: string | null): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 ? digits : null;
+}
+
+function buildWhatsappUrl(value: string | null): string | null {
+  const digits = normalizePhoneDigits(value);
+  if (!digits) return null;
+  return `https://wa.me/${digits}`;
 }
 
 function buildContact(tags: Record<string, string>): EstablishmentContact {
   const phoneRaw = getTag(tags, [
-    "contact:whatsapp",
     "contact:mobile",
     "mobile",
     "phone",
     "contact:phone",
+    "contact:whatsapp",
+    "whatsapp",
   ]);
-  const phoneDigits = phoneRaw ? phoneRaw.replace(/\D/g, "") : null;
-  const whatsappSource = getTag(tags, ["contact:whatsapp", "whatsapp"]);
-  const whatsappDigits = whatsappSource
-    ? whatsappSource.replace(/\D/g, "")
-    : phoneDigits;
-
+  const phoneDigits = normalizePhoneDigits(phoneRaw);
+  const whatsappRaw = getTag(tags, ["contact:whatsapp", "whatsapp"]);
   const ig = instagramFromValue(getTag(tags, ["contact:instagram", "instagram"]));
 
   return {
     phoneRaw,
     phoneDigits,
-    whatsappUrl:
-      whatsappDigits && whatsappDigits.length >= 8
-        ? `https://wa.me/${whatsappDigits}`
-        : null,
+    whatsappUrl: buildWhatsappUrl(whatsappRaw),
     instagramHandle: ig.handle,
     instagramUrl: ig.url,
     facebookUrl: normalizeUrl(getTag(tags, ["contact:facebook", "facebook"])),
@@ -117,18 +112,14 @@ const CUISINE_LABELS: Record<string, string> = {
 
 function formatCuisine(value: string | null): string | null {
   if (!value) return null;
-  return value
-    .split(";")
-    .map((c) => CUISINE_LABELS[c.trim()] ?? c.trim().replace(/_/g, " "))
-    .join(", ");
+  return value.split(";").map((c) => CUISINE_LABELS[c.trim()] ?? c.trim().replace(/_/g, " ")).join(", ");
 }
 
 function paymentSummary(tags: Record<string, string>): string | null {
   const accepted = Object.entries(tags)
     .filter(([key, value]) => key.startsWith("payment:") && value === "yes")
     .map(([key]) => key.replace("payment:", "").replace(/_/g, " "));
-  if (accepted.length === 0) return null;
-  return accepted.slice(0, 5).join(", ");
+  return accepted.length > 0 ? accepted.slice(0, 5).join(", ") : null;
 }
 
 function buildDetails(tags: Record<string, string>): EstablishmentDetails {
@@ -176,12 +167,11 @@ function buildAddress(tags: Record<string, string>): string {
 function groupFromTags(tags: Record<string, string>): string {
   for (const def of CATEGORIES) {
     const raw = tags[def.osmKey];
-    if (raw && def.osmValue.split(";")[0] === raw) return def.group;
+    if (raw && def.osmValue.split(";").includes(raw)) return def.group;
   }
   return "Outros";
 }
 
-/** Pontuação 0-100: quanto mais fácil de contatar e menos digitalizado, maior. */
 function scoreLead(input: {
   level: SignalLevel;
   hasWhatsapp: boolean;
@@ -190,10 +180,7 @@ function scoreLead(input: {
   hasAddress: boolean;
   hasHours: boolean;
 }): number {
-  let score = 0;
-  if (input.level === "zero") score += 45;
-  else if (input.level === "weak") score += 28;
-  else score += 6;
+  let score = input.level === "zero" ? 45 : input.level === "weak" ? 28 : 6;
   if (input.hasWhatsapp) score += 30;
   else if (input.hasPhone) score += 18;
   if (input.hasInstagram) score += 12;
@@ -217,9 +204,8 @@ export function processOverpassResults(
 
   for (const el of elements) {
     const tags = el.tags ?? {};
-    const name = tags["name"]?.trim();
+    const name = tags.name?.trim();
     if (!name) continue;
-
     const lat = el.lat ?? el.center?.lat;
     const lon = el.lon ?? el.center?.lon;
     if (lat == null || lon == null) continue;
@@ -263,12 +249,8 @@ export function processOverpassResults(
         hasHours: Boolean(details.openingHours),
       }),
       level,
-      googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        `${name} ${address || `${lat},${lon}`}`
-      )}`,
-      googleSearchUrl: `https://www.google.com/search?q=${encodeURIComponent(
-        `${name} ${details.city ?? ""} avaliações`
-      )}`,
+      googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${address || `${lat},${lon}`}`)}`,
+      googleSearchUrl: `https://www.google.com/search?q=${encodeURIComponent(`${name} ${details.city ?? ""} avaliações`)}`,
       osmUrl: `https://www.openstreetmap.org/${el.type}/${el.id}`,
       directionsUrl: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`,
     });
