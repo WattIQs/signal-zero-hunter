@@ -23,6 +23,9 @@ export interface GeoPoint {
   lat: number;
   lon: number;
   boundingBox?: BoundingBox | null;
+  /** ID de área do Overpass (limite administrativo exato), quando disponível. */
+  areaId?: number | null;
+  displayName?: string | null;
 }
 
 export interface EstablishmentSignals {
@@ -64,6 +67,8 @@ export interface EstablishmentDetails {
   capacity: string | null;
   brand: string | null;
   operator: string | null;
+  payment: string | null;
+  internetAccess: string | null;
 }
 
 export interface Establishment {
@@ -72,7 +77,9 @@ export interface Establishment {
   osmId: number;
   name: string;
   category: string;
+  categoryGroup: string;
   address: string;
+  hasAddress: boolean;
   lat: number;
   lon: number;
   tags: Record<string, string>;
@@ -80,9 +87,14 @@ export interface Establishment {
   contact: EstablishmentContact;
   details: EstablishmentDetails;
   contactable: boolean;
+  hasWhatsapp: boolean;
+  hasInstagram: boolean;
   signalCount: number;
+  /** 0-100: quão promissor é o lead. */
+  score: number;
   level: SignalLevel;
   googleMapsUrl: string;
+  googleSearchUrl: string;
   osmUrl: string;
   directionsUrl: string;
 }
@@ -91,20 +103,4 @@ export interface SavedLead extends Establishment {
   savedAt: string;
 }
 
-export type CategoryKey = "restaurant" | "fast_food" | "cafe" | "bar" | "pub";
-
-export const CATEGORY_LABELS: Record<CategoryKey, string> = {
-  restaurant: "Restaurante",
-  fast_food: "Lanchonete",
-  cafe: "Café",
-  bar: "Bar",
-  pub: "Pub",
-};
-
-export const CATEGORY_AMENITY: Record<CategoryKey, string> = {
-  restaurant: "restaurant",
-  fast_food: "fast_food",
-  cafe: "cafe",
-  bar: "bar",
-  pub: "pub",
-};
+export type CategoryKey = string;

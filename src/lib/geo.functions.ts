@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { BoundingBox, CategoryKey, GeoPoint } from "./types";
-import { CATEGORY_AMENITY } from "./types";
+import type { BoundingBox, GeoPoint } from "./types";
+import { CATEGORY_BY_KEY, type OsmKey } from "./categories";
 
 const UA = "SinalZeroLeadScanner/1.0 (lead prospecting tool)";
 
@@ -18,38 +18,60 @@ async function fetchWithTimeout(
   }
 }
 
+interface NominatimResult {
+  lat: string;
+  lon: string;
+  osm_type?: string;
+  osm_id?: number;
+  display_name?: string;
+  boundingbox?: [string, string, string, string];
+}
+
+/**
+ * Geocodifica a localidade selecionada e devolve, quando possível, o ID de área
+ * do Overpass — assim a varredura respeita exatamente o limite administrativo
+ * escolhido, e não um retângulo aproximado.
+ */
 export const geocodeCityServer = createServerFn({ method: "POST" })
-  .inputValidator((data: { country: string; state?: string | null; city: string }) => data)
+  .inputValidator(
+    (data: { country: string; state?: string | null; city: string }) => data
+  )
   .handler(async ({ data }): Promise<GeoPoint> => {
     const query = data.state
       ? `${data.city}, ${data.state}, ${data.country}`
       : `${data.city}, ${data.country}`;
 
     const response = await fetchWithTimeout(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
+      `https://nominatim.openstreetmap.org/search?format=json&limit=8&q=${encodeURIComponent(query)}`,
       { headers: { Accept: "application/json", "User-Agent": UA } },
       20000
     );
     if (!response.ok) {
       throw new Error(
-        `Não foi possível localizar a cidade agora (código ${response.status}). Tente novamente em alguns segundos.`
+        `Não foi possível localizar "${data.city}" agora (código ${response.status}). Tente novamente em alguns segundos.`
       );
     }
-    const results = (await response.json()) as {
-      lat: string;
-      lon: string;
-      boundingbox?: [string, string, string, string];
-    }[];
-    const first = results[0];
-    if (!first) {
+    const results = (await response.json()) as NominatimResult[];
+    const chosen =
+      results.find((r) => r.osm_type === "relation") ?? results[0];
+    if (!chosen) {
       throw new Error(
-        "Cidade não encontrada. Tente escrever o nome sem bairro e sem abreviações."
+        `"${data.city}" não foi encontrada. Tente sem bairro e sem abreviações, ou escolha uma cidade vizinha.`
       );
     }
-    const bb = first.boundingbox;
+
+    let areaId: number | null = null;
+    if (chosen.osm_id) {
+      if (chosen.osm_type === "relation") areaId = 3600000000 + chosen.osm_id;
+      else if (chosen.osm_type === "way") areaId = 2400000000 + chosen.osm_id;
+    }
+
+    const bb = chosen.boundingbox;
     return {
-      lat: Number.parseFloat(first.lat),
-      lon: Number.parseFloat(first.lon),
+      lat: Number.parseFloat(chosen.lat),
+      lon: Number.parseFloat(chosen.lon),
+      areaId,
+      displayName: chosen.display_name ?? null,
       boundingBox: bb
         ? {
             south: Number.parseFloat(bb[0]!),
@@ -76,49 +98,85 @@ export interface OverpassElement {
   tags?: Record<string, string>;
 }
 
+function buildSelectors(categories: string[]): string[] {
+  const byKey = new Map<OsmKey, Set<string>>();
+  for (const key of categories) {
+    const def = CATEGORY_BY_KEY[key];
+    if (!def) continue;
+    const values = def.osmValue.split(";").filter(Boolean);
+    const set = byKey.get(def.osmKey) ?? new Set<string>();
+    values.forEach((v) => set.add(v));
+    byKey.set(def.osmKey, set);
+  }
+  return [...byKey.entries()].map(
+    ([osmKey, values]) => `["${osmKey}"~"^(${[...values].join("|")})$"]`
+  );
+}
+
 export const searchOverpassServer = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { area: BoundingBox; categories: CategoryKey[] }) => data
+    (data: {
+      area: BoundingBox;
+      areaId?: number | null;
+      categories: string[];
+    }) => data
   )
-  .handler(async ({ data }): Promise<{ elements: OverpassElement[] }> => {
-    const { area, categories } = data;
-    const amenities = categories.map((c) => CATEGORY_AMENITY[c]);
-    const bbox = `${area.south},${area.west},${area.north},${area.east}`;
-    const filter = `["amenity"~"^(${amenities.join("|")})$"]`;
-    const query = `[out:json][timeout:50];
-(
-  node${filter}(${bbox});
-  way${filter}(${bbox});
-);
-out tags center 1200;`;
+  .handler(async ({ data }): Promise<{ elements: OverpassElement[]; exact: boolean }> => {
+    const selectors = buildSelectors(data.categories);
+    if (selectors.length === 0) {
+      return { elements: [], exact: false };
+    }
+
+    const bbox = `${data.area.south},${data.area.west},${data.area.north},${data.area.east}`;
+
+    const buildQuery = (useArea: boolean) => {
+      const scope = useArea ? "(area.searchArea)" : `(${bbox})`;
+      const head = useArea
+        ? `area(${data.areaId})->.searchArea;\n`
+        : "";
+      const body = selectors
+        .map((sel) => `  nwr${sel}${scope};`)
+        .join("\n");
+      return `[out:json][timeout:90];\n${head}(\n${body}\n);\nout tags center 3000;`;
+    };
+
+    const attempts: { query: string; exact: boolean }[] = [];
+    if (data.areaId) attempts.push({ query: buildQuery(true), exact: true });
+    attempts.push({ query: buildQuery(false), exact: false });
 
     const errors: string[] = [];
-    for (const mirror of OVERPASS_MIRRORS) {
-      try {
-        const response = await fetchWithTimeout(
-          mirror,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-              "User-Agent": UA,
+    for (const attempt of attempts) {
+      for (const mirror of OVERPASS_MIRRORS) {
+        try {
+          const response = await fetchWithTimeout(
+            mirror,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": UA,
+              },
+              body: `data=${encodeURIComponent(attempt.query)}`,
             },
-            body: `data=${encodeURIComponent(query)}`,
-          },
-          55000
-        );
-        if (!response.ok) {
-          errors.push(`${mirror}: ${response.status}`);
-          continue;
+            95000
+          );
+          if (!response.ok) {
+            errors.push(`${mirror}: ${response.status}`);
+            continue;
+          }
+          const json = (await response.json()) as {
+            elements?: OverpassElement[];
+          };
+          const elements = json.elements ?? [];
+          if (elements.length === 0 && attempt.exact) break; // tenta o bbox
+          return { elements, exact: attempt.exact };
+        } catch (error) {
+          errors.push(`${mirror}: ${(error as Error).message}`);
         }
-        const json = (await response.json()) as { elements?: OverpassElement[] };
-        return { elements: json.elements ?? [] };
-      } catch (error) {
-        errors.push(`${mirror}: ${(error as Error).message}`);
       }
     }
 
     throw new Error(
-      `Os servidores do OpenStreetMap estão sobrecarregados agora. Tente novamente em alguns segundos. (${errors.join(" | ")})`
+      `Os servidores do OpenStreetMap estão sobrecarregados agora. Tente novamente em alguns segundos. (${errors.slice(0, 3).join(" | ")})`
     );
   });
