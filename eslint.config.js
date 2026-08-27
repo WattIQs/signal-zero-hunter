@@ -36,5 +36,10 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    rules: {
+      "prettier/prettier": "off",
+    },
+  },
   eslintPluginPrettier,
 );
