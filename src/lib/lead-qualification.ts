@@ -50,7 +50,11 @@ function instagramFromValue(value: string | null): { handle: string | null; url:
   const match = cleaned.match(/(?:instagram\.com\/|^@)([A-Za-z0-9_.]+)/i);
   const handle = match?.[1] ?? cleaned.split(/[/?\s]/)[0];
   if (!handle) return { handle: null, url: null };
-  return { handle: `@${handle.replace(/^@/, "")}`, url: `https://instagram.com/${handle.replace(/^@/, "")}` };
+  const normalizedHandle = handle.replace(/^@/, "");
+  return {
+    handle: `@${normalizedHandle}`,
+    url: `https://instagram.com/${normalizedHandle}`,
+  };
 }
 
 function normalizePhoneDigits(value: string | null): string | null {
@@ -112,7 +116,10 @@ const CUISINE_LABELS: Record<string, string> = {
 
 function formatCuisine(value: string | null): string | null {
   if (!value) return null;
-  return value.split(";").map((c) => CUISINE_LABELS[c.trim()] ?? c.trim().replace(/_/g, " ")).join(", ");
+  return value
+    .split(";")
+    .map((c) => CUISINE_LABELS[c.trim()] ?? c.trim().replace(/_/g, " "))
+    .join(", ");
 }
 
 function paymentSummary(tags: Record<string, string>): string | null {
@@ -197,14 +204,14 @@ export function processOverpassResults(
     lon?: number;
     center?: { lat: number; lon: number };
     tags?: Record<string, string>;
-  }[]
+  }[],
 ): Establishment[] {
   const results: Establishment[] = [];
   const seen = new Set<string>();
 
   for (const el of elements) {
     const tags = el.tags ?? {};
-    const name = tags.name?.trim();
+    const name = tags["name"]?.trim();
     if (!name) continue;
     const lat = el.lat ?? el.center?.lat;
     const lon = el.lon ?? el.center?.lon;
