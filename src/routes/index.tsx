@@ -57,6 +57,7 @@ function Index() {
   const [categories, setCategories] = useState<CategoryKey[]>(DEFAULT_CATEGORIES);
   const [onlyLowSignal, setOnlyLowSignal] = useState(false);
   const [onlyContactable, setOnlyContactable] = useState(false);
+  const [onlyNoWebsite, setOnlyNoWebsite] = useState(false);
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
@@ -181,12 +182,16 @@ function Index() {
   );
 
   const activeFilterCount =
-    categories.length + (onlyLowSignal ? 1 : 0) + (onlyContactable ? 1 : 0);
+    categories.length +
+    (onlyLowSignal ? 1 : 0) +
+    (onlyContactable ? 1 : 0) +
+    (onlyNoWebsite ? 1 : 0);
 
   const resetFilters = () => {
     setCategories([]);
     setOnlyLowSignal(false);
     setOnlyContactable(false);
+    setOnlyNoWebsite(false);
   };
 
   const handleScan = async () => {
@@ -253,13 +258,14 @@ function Index() {
     let filtered = results;
     if (onlyLowSignal) filtered = filtered.filter((lead) => lead.level !== "full");
     if (onlyContactable) filtered = filtered.filter((lead) => lead.contactable);
+    if (onlyNoWebsite) filtered = filtered.filter((lead) => !lead.signals.website);
 
     return [...filtered].sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (a.level !== b.level) return a.level === "zero" ? -1 : 1;
       return a.name.localeCompare(b.name, "pt-BR");
     });
-  }, [results, onlyLowSignal, onlyContactable]);
+  }, [results, onlyLowSignal, onlyContactable, onlyNoWebsite]);
 
   const locationLabel = [selectedCity, selectedState, selectedCountry].filter(Boolean).join(", ");
 
@@ -314,14 +320,14 @@ function Index() {
           <main>
             {!scanning && results.length === 0 && !error && (
               <section className="mx-auto max-w-3xl py-14 text-center md:py-20">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-border bg-card shadow-sm">
+                <div className="soft-float mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-border bg-card shadow-lg shadow-primary/5">
                   <Radar className="h-9 w-9 text-primary/70" />
                 </div>
                 <h2 className="mt-7 text-2xl font-bold tracking-tight md:text-3xl">Pronto para encontrar oportunidades?</h2>
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
                   Abra <span className="font-medium text-foreground">Configurar busca</span>, escolha localização, categorias e filtros. Depois, mande escanear.
                 </p>
-                <Button size="lg" className="mt-7 gap-2" onClick={() => setFilterOpen(true)}>
+                <Button size="lg" className="mt-7 gap-2 shadow-lg shadow-primary/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/15" onClick={() => setFilterOpen(true)}>
                   <SlidersHorizontal className="h-4 w-4" />
                   Configurar minha busca
                 </Button>
@@ -329,14 +335,14 @@ function Index() {
             )}
 
             {error && !scanning && (
-              <Alert className="mb-5 border-destructive/25 bg-destructive/10">
+              <Alert className="fade-up mb-5 border-destructive/25 bg-destructive/10">
                 <AlertTitle className="text-sm">Atenção</AlertTitle>
                 <AlertDescription className="text-sm">{error}</AlertDescription>
               </Alert>
             )}
 
             {scanning && (
-              <div className="flex flex-col items-center justify-center py-16">
+              <div className="fade-up flex flex-col items-center justify-center py-16">
                 <RadarAnimation size={170} />
                 <p className="mt-4 text-sm font-medium text-foreground">Varrendo a região...</p>
                 <p className="mt-1 text-xs text-muted-foreground">Geocodificando e procurando estabelecimentos.</p>
@@ -345,7 +351,7 @@ function Index() {
 
             {results.length > 0 && !scanning && (
               <section className="space-y-5">
-                <div className="flex flex-col gap-4 rounded-xl border border-border bg-card/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="fade-up flex flex-col gap-4 rounded-2xl border border-border/80 bg-card/75 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-base font-semibold">Oportunidades</h2>
@@ -366,7 +372,7 @@ function Index() {
                 </div>
 
                 {filteredResults.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
+                  <div className="fade-up rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
                     <p className="text-sm font-medium">Nenhum lead passou pelos filtros.</p>
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => setFilterOpen(true)}>
                       Abrir configuração
@@ -374,13 +380,14 @@ function Index() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {filteredResults.map((lead) => (
-                      <LeadCard
-                        key={lead.id}
-                        lead={lead}
-                        saved={isLeadSaved(lead.id)}
-                        onToggleSave={handleToggleSave}
-                      />
+                    {filteredResults.map((lead, index) => (
+                      <div key={lead.id} style={{ animationDelay: `${Math.min(index, 8) * 35}ms` }}>
+                        <LeadCard
+                          lead={lead}
+                          saved={isLeadSaved(lead.id)}
+                          onToggleSave={handleToggleSave}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
@@ -407,6 +414,8 @@ function Index() {
         onOnlyLowSignalChange={setOnlyLowSignal}
         onlyContactable={onlyContactable}
         onOnlyContactableChange={setOnlyContactable}
+        onlyNoWebsite={onlyNoWebsite}
+        onOnlyNoWebsiteChange={setOnlyNoWebsite}
         loadingCountries={loadingCountries}
         loadingStates={loadingStates}
         loadingCities={loadingCities}
@@ -438,7 +447,7 @@ function StatCard({
           : "text-foreground";
 
   return (
-    <Card className="border-border bg-card/80 shadow-sm">
+    <Card className="border-border bg-card/80 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <CardContent className="p-3">
         <p className={`text-xl font-bold tracking-tight ${valueClass}`}>{value}</p>
         <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
