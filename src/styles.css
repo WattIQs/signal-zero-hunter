@@ -4,12 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Design system: Sinal Zero — tema radar/scanner de sinal.
- *
- * Tudo em oklch. Tokens semânticos mapeados no @theme inline.
- */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -18,7 +12,6 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -38,8 +31,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ring-offset-background: var(--background);
-
   --color-signal-zero: var(--signal-zero);
   --color-signal-zero-glow: var(--signal-zero-glow);
   --color-signal-weak: var(--signal-weak);
@@ -51,72 +42,74 @@
 }
 
 :root {
-  --radius: 0.75rem;
-
-  /* Base escura tipo blueprint */
-  --background: oklch(0.18 0.03 260);
-  --foreground: oklch(0.95 0.01 260);
-
-  --card: oklch(0.22 0.04 260);
-  --card-foreground: oklch(0.95 0.01 260);
-
-  --popover: oklch(0.2 0.04 260);
-  --popover-foreground: oklch(0.95 0.01 260);
-
-  /* Laranja-sinal vibrante como primário */
-  --primary: oklch(0.65 0.2 55);
-  --primary-foreground: oklch(0.15 0.03 260);
-
-  --secondary: oklch(0.28 0.05 260);
-  --secondary-foreground: oklch(0.92 0.01 260);
-
-  --muted: oklch(0.28 0.04 260);
-  --muted-foreground: oklch(0.65 0.03 260);
-
-  --accent: oklch(0.32 0.06 260);
-  --accent-foreground: oklch(0.95 0.01 260);
-
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0.01 260);
-
-  --border: oklch(0.35 0.04 260);
-  --input: oklch(0.3 0.04 260);
-  --ring: oklch(0.65 0.18 55);
-
-  /* Sinal */
-  --signal-zero: oklch(0.68 0.22 55);
-  --signal-zero-glow: oklch(0.75 0.28 60);
-  --signal-weak: oklch(0.75 0.16 85);
-  --signal-full: oklch(0.65 0.14 195);
-  --cyan: oklch(0.7 0.16 210);
-  --cyan-dim: oklch(0.55 0.12 210);
-  --grid: oklch(0.25 0.03 260 / 0.35);
-  --panel: oklch(0.2 0.04 260 / 0.85);
+  --radius: 0.8rem;
+  --background: oklch(0.16 0.025 258);
+  --foreground: oklch(0.96 0.01 258);
+  --card: oklch(0.205 0.032 258);
+  --card-foreground: oklch(0.96 0.01 258);
+  --popover: oklch(0.19 0.032 258);
+  --popover-foreground: oklch(0.96 0.01 258);
+  --primary: oklch(0.68 0.19 48);
+  --primary-foreground: oklch(0.15 0.02 258);
+  --secondary: oklch(0.255 0.038 258);
+  --secondary-foreground: oklch(0.93 0.01 258);
+  --muted: oklch(0.255 0.032 258);
+  --muted-foreground: oklch(0.68 0.025 258);
+  --accent: oklch(0.29 0.045 258);
+  --accent-foreground: oklch(0.96 0.01 258);
+  --destructive: oklch(0.58 0.2 27);
+  --destructive-foreground: oklch(0.98 0.01 258);
+  --border: oklch(0.33 0.035 258);
+  --input: oklch(0.285 0.035 258);
+  --ring: oklch(0.68 0.17 48);
+  --signal-zero: oklch(0.72 0.21 48);
+  --signal-zero-glow: oklch(0.8 0.23 58);
+  --signal-weak: oklch(0.79 0.15 88);
+  --signal-full: oklch(0.69 0.13 195);
+  --cyan: oklch(0.74 0.14 205);
+  --cyan-dim: oklch(0.58 0.1 205);
+  --grid: oklch(0.27 0.025 258 / 0.18);
+  --panel: oklch(0.19 0.032 258 / 0.94);
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
+  * { border-color: var(--color-border); }
 
   html {
     font-family: "Space Grotesk", system-ui, sans-serif;
+    scroll-behavior: smooth;
+    scrollbar-gutter: stable;
   }
 
   body {
+    min-height: 100vh;
     background-color: var(--color-background);
     color: var(--color-foreground);
     background-image:
+      radial-gradient(circle at 18% -5%, color-mix(in oklab, var(--color-signal-zero) 7%, transparent), transparent 28%),
+      radial-gradient(circle at 82% 5%, color-mix(in oklab, var(--color-cyan) 5%, transparent), transparent 24%),
       linear-gradient(var(--color-grid) 1px, transparent 1px),
       linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
-    background-size: 48px 48px;
+    background-size: auto, auto, 52px 52px, 52px 52px;
     background-position: center top;
+    overflow-x: hidden;
   }
 
-  code,
-  .font-mono {
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 30%, transparent);
+    color: var(--color-foreground);
   }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: color-mix(in oklab, var(--color-background) 92%, transparent); }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-border) 82%, var(--color-primary) 18%);
+    border-radius: 999px;
+    border: 2px solid var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: color-mix(in oklab, var(--color-primary) 48%, var(--color-border)); }
+
+  code, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
 }
 
 @layer utilities {
@@ -127,70 +120,68 @@
     color: transparent;
   }
 
-  .glow-zero {
-    box-shadow: 0 0 18px -4px color-mix(in oklab, var(--color-signal-zero) 55%, transparent);
+  .surface-glass {
+    background: color-mix(in oklab, var(--color-card) 84%, transparent);
+    backdrop-filter: blur(14px);
   }
 
-  .glow-zero-text {
-    text-shadow: 0 0 16px color-mix(in oklab, var(--color-signal-zero) 60%, transparent);
-  }
+  .glow-zero { box-shadow: 0 0 22px -6px color-mix(in oklab, var(--color-signal-zero) 55%, transparent); }
+  .glow-zero-text { text-shadow: 0 0 18px color-mix(in oklab, var(--color-signal-zero) 60%, transparent); }
+  .border-glow { border-color: color-mix(in oklab, var(--color-signal-zero) 42%, var(--color-border)); }
 
-  .border-glow {
-    border-color: color-mix(in oklab, var(--color-signal-zero) 40%, var(--color-border));
-  }
+  .fade-up { animation: fade-up 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .soft-float { animation: soft-float 5s ease-in-out infinite; }
 
   .radar-ring {
     position: absolute;
     inset: 0;
     border-radius: 50%;
     border: 1px solid color-mix(in oklab, var(--color-signal-zero) 35%, transparent);
-    animation: radar-pulse 2.5s ease-out infinite;
+    animation: radar-pulse 2.7s ease-out infinite;
   }
 
   .radar-sweep {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: conic-gradient(
-      from 0deg,
-      transparent 0deg,
-      color-mix(in oklab, var(--color-signal-zero) 45%, transparent) 60deg,
-      transparent 65deg
-    );
-    animation: radar-sweep 2s linear infinite;
+    background: conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, var(--color-signal-zero) 48%, transparent) 56deg, transparent 68deg);
+    animation: radar-sweep 2.2s linear infinite;
   }
 }
 
 @keyframes radar-pulse {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1.4);
-    opacity: 0;
-  }
+  0% { transform: scale(0.58); opacity: 0.78; }
+  100% { transform: scale(1.45); opacity: 0; }
 }
 
 @keyframes radar-sweep {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes glow-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 14px -3px color-mix(in oklab, var(--color-signal-zero) 45%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 24px -2px color-mix(in oklab, var(--color-signal-zero) 70%, transparent);
-  }
+  0%, 100% { box-shadow: 0 0 16px -4px color-mix(in oklab, var(--color-signal-zero) 40%, transparent); }
+  50% { box-shadow: 0 0 28px -4px color-mix(in oklab, var(--color-signal-zero) 68%, transparent); }
 }
 
-.animate-glow-pulse {
-  animation: glow-pulse 2s ease-in-out infinite;
+@keyframes soft-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-glow-pulse { animation: glow-pulse 2.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
